@@ -12,6 +12,8 @@ globals [
 
 ]
 
+
+
 breed [sheep a-sheep]
 breed [wolves wolf]
 
