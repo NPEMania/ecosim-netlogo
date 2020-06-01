@@ -12,12 +12,10 @@ globals [
 
 ]
 
-
-
 breed [sheep a-sheep]
 breed [wolves wolf]
 
-turtles-own [ energy stride-length gender lifespan scent sheep-scent]
+turtles-own [ energy stride-length gender lifespan]
 patches-own [ countdown ]  ;; patches countdown until they regrow
 
 to setup
@@ -46,7 +44,6 @@ to setup
   [
     set color white
     set stride-length initial-sheep-stride
-    set scent 3
     set size 3  ;; easier to see
     set energy random  max-energy
     if energy < min-energy [set energy min-energy]
@@ -56,14 +53,13 @@ to setup
       [ set gender 0
         set size 2   ;;half sheep are adolescent
         set lifespan 1001
-        set scent 2
         if random 2 = 0 ;;1/4 sheep are baby
             [ set size 1
               set lifespan 1
-              set scent 1
             ]
       ]
     setxy random-xcor random-ycor
+
 
   ]
 
@@ -72,7 +68,6 @@ to setup
   [
     set color black
     set stride-length initial-wolf-stride
-       set scent 3
     set size 3  ;; easier to see
     set energy random max-energy
     set lifespan 2001
@@ -81,14 +76,19 @@ to setup
       [ set gender 0
         set size 2
         set lifespan 1001
-        set scent 2
         if random 2 = 0
             [ set size 1
               set lifespan 1
-              set scent 1
             ]
     ]
     setxy random-xcor random-ycor
+
+    let target one-of sheep with [ distance self < 10 ]
+    if target != nobody [
+      create-link-with target[
+        hide-link
+      ]
+    ]
   ]
   reset-ticks
 end
@@ -111,7 +111,7 @@ to go
 
   ]
   ask wolves [
-    move
+    move-wolf
     ;; wolves always loose 0.5 units of energy each tick
     set energy energy - 0.5
     ;; if larger strides use more energy
@@ -136,9 +136,22 @@ to move  ;; turtle procedure
 end
 
 to move-wolf
-  face one-of sheep with [distance self < 15]
-  rt 45
-  lt 45
+  let target one-of link-neighbors
+
+  ifelse target != nobody
+  [
+    let target_size [size] of target
+    ifelse target_size > size
+          [ ask link-with target [die] ]
+          [ face target ]
+  ]
+  [
+    rt random-float 50
+    lt random-float 50
+    create-link-with one-of sheep with [ distance self < 10 ] [
+      hide-link
+    ]
+  ]
   fd stride-length
 
 end
@@ -172,7 +185,7 @@ to reproduce [reproduction-chance drift turtle-gender] ;; turtle procedure
       ;; mutate the stride length based on the drift for this breed
       set stride-length mutated-stride-length drift
       set gender 1 ;; 1 if female and 0 if male
-      if random 2 = 0  ;;half the patches start out with grass
+      if random 2 = 0
       [ set gender 0]
       set size 1
       set lifespan 0
@@ -193,17 +206,11 @@ end
 to catch-sheep  ;; wolf procedure
   let prey one-of sheep-here
   if prey != nobody
-  [
-    let preysize [ size ] of prey
-    ;ask prey [ die ]
-    ;set energy energy + wolf-gain-from-food * size
-    ;if energy > max-energy [set energy max-energy]
-    if preysize <= size
-      [
-        ask prey [ die ]
-        set energy energy + wolf-gain-from-food * size
-        if energy > max-energy [set energy max-energy]
-    ]
+  [ let prey_size [size] of prey
+    if prey_size <= size[
+    ask prey [ die ]
+    set energy energy + wolf-gain-from-food * prey_size
+      if energy > max-energy [set energy max-energy]]
   ]
 end
 
@@ -239,15 +246,15 @@ end
 ; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
-0
-0
-374
-375
+430
+12
+804
+387
 -1
 -1
 6.0
 1
-10
+20
 1
 1
 1
@@ -259,8 +266,6 @@ GRAPHICS-WINDOW
 30
 -30
 30
-0
-0
 1
 1
 1
@@ -276,7 +281,7 @@ initial-number-sheep
 initial-number-sheep
 0
 250
-200.0
+57.0
 1
 1
 NIL
@@ -291,7 +296,7 @@ initial-number-wolves
 initial-number-wolves
 0
 250
-127.0
+43.0
 1
 1
 NIL
@@ -428,7 +433,7 @@ initial-wolf-stride
 initial-wolf-stride
 0
 1
-0.2
+0.3
 0.1
 1
 NIL
@@ -443,7 +448,7 @@ sheep-stride-length-drift
 sheep-stride-length-drift
 0
 1
-0.2
+0.21
 0.01
 1
 NIL
@@ -477,7 +482,7 @@ wolf-stride-length-drift
 wolf-stride-length-drift
 0
 1
-0.27
+0.2
 0.01
 1
 NIL
@@ -557,7 +562,7 @@ PLOT
 18
 1227
 168
-avg sheep count
+avg gender sheep
 time
 count
 0.0
@@ -589,23 +594,23 @@ PENS
 "default" 1.0 0 -16777216 true "" "if any? wolves\n[plot mean[gender] of wolves]"
 
 PLOT
-374
-258
-574
-408
-Adults
+948
+309
+1148
+459
+adult  count
 time
-adults
+count
 0.0
-100.0
+50.0
 0.0
 100.0
 true
 true
 "" ""
 PENS
-"sheeps" 1.0 0 -16777216 true "" "plot count sheep with [ size = 3 ]"
-"wolves" 1.0 0 -7500403 true "" "plot count wolves  with [ size = 3 ]"
+"sheep" 1.0 0 -16777216 true "" "plot count sheep with [size = 3]"
+"wolf" 1.0 0 -7500403 true "" "plot count wolves with [size = 3]"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -981,7 +986,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 3D 6.1.1
+NetLogo 6.1.1
 @#$#@#$#@
 setup
 repeat 75 [ go ]
